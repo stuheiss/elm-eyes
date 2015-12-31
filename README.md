@@ -1,5 +1,5 @@
 # elm-eyes
 
-Xeyes in Elm
+Xeyes in [Elm](http://elm-lang.org/)
 
-Run it [here](http://www.monkeynut.org/elm-eyes.html).
+[Demo](http://www.monkeynut.org/elm-eyes.html)
