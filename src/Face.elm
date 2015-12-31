@@ -8,6 +8,7 @@ import Html.Lazy
 import Mouse
 import Time
 import Touch
+import Window
 
 
 -- MODEL
@@ -23,10 +24,20 @@ import Touch
 type alias Model =
   { leftEye : Eye.Model
   , rightEye : Eye.Model
+  , width : Int
+  , height : Int
+  , visibility: Visibility
   }
 
 
-type alias Action = Maybe (Int, Int)
+-- Only display the model after an initial `Dimensions' action
+type Visibility = Hidden | Visible
+
+
+type Action =
+    NoOp
+  | Dimensions (Int, Int)
+  | Click (Int, Int)
 
 
 noFx : Model -> (Model, Effects.Effects Action)
@@ -34,11 +45,14 @@ noFx model =
    (model, Effects.none)
 
 
-init : () -> (Model, Effects.Effects Action)
-init () =
+init : (Model, Effects.Effects Action)
+init =
   noFx
     { leftEye = Eye.init 0.0 0.0
     , rightEye = Eye.init 0.0 0.0
+    , width = 0
+    , height = 0
+    , visibility = Hidden
     }
 
 
@@ -47,16 +61,18 @@ init () =
 update : Action -> Model -> (Model, Effects.Effects Action)
 update action model =
   case action of
-    Nothing -> noFx model
-    Just (x, y) -> noFx
-      { leftEye = Eye.update
-          { mouseX = (toFloat x) - halfWidth - leftEyeX
-          , mouseY = halfHeight - (toFloat y) - leftEyeY
+    NoOp -> noFx model
+    Dimensions (x, y) -> noFx { model | width = x, height = y, visibility = Visible }
+    Click (x, y) -> noFx
+      { model |
+        leftEye = Eye.update
+          { mouseX = (toFloat x) - (toFloat model.width / 2) - leftEyeX
+          , mouseY = (toFloat model.height / 2) - (toFloat y) - leftEyeY
           }
           model.leftEye,
         rightEye = Eye.update
-          { mouseX = (toFloat x) - halfWidth - rightEyeX
-          , mouseY = halfHeight - (toFloat y) - rightEyeY
+          { mouseX = (toFloat x) - (toFloat model.width / 2) - rightEyeX
+          , mouseY = (toFloat model.height / 2) - (toFloat y) - rightEyeY
           }
           model.rightEye
       }
@@ -66,11 +82,14 @@ update action model =
 
 viewFace : Model -> Html.Html
 viewFace model =
-  Html.fromElement
-  <| Graphics.Collage.collage width height
-     [ Graphics.Collage.move (leftEyeX, leftEyeY) <| Eye.view model.leftEye
-     , Graphics.Collage.move (rightEyeX, rightEyeY) <| Eye.view model.rightEye
-     ]
+  case model.visibility of
+    Hidden -> Html.div [] []
+    Visible ->
+      Html.fromElement
+        <| Graphics.Collage.collage model.width model.height
+       [ Graphics.Collage.move (leftEyeX, leftEyeY) <| Eye.view model.leftEye
+       , Graphics.Collage.move (rightEyeX, rightEyeY) <| Eye.view model.rightEye
+       ]
 
 
 view : Signal.Address Action -> Model -> Html.Html
@@ -89,8 +108,9 @@ input : Signal.Signal Action
 input =
   Signal.sampleOn delta <|
     Signal.mergeMany
-      [ Signal.map Just Mouse.position
+      [ Signal.map Dimensions Window.dimensions
+      , Signal.map Click Mouse.position
       , Signal.map
-          (List.foldr (\t -> \_ -> Just (t.x, t.y)) Nothing)
+          (List.foldr (\t -> \_ -> Click (t.x, t.y)) NoOp)
           Touch.touches
       ]

@@ -47,6 +47,7 @@ update action model =
   in
     { model | pupilX = pupilX, pupilY = pupilY }
 
+
 -- See http://mathworld.wolfram.com/Ellipse-LineIntersection.html
 constrainCircleToElipse : Float -> Float -> Float -> Float -> (Float, Float)
 constrainCircleToElipse x_0 y_0 a b =

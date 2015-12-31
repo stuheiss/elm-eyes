@@ -3,7 +3,7 @@ import StartApp exposing (start)
 
 app =
   StartApp.start
-    { init = init ()
+    { init = init
     , inputs = [input]
     , update = update
     , view = view
