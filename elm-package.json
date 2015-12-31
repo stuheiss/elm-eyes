@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "summary": "Xeyes in elm",
+    "summary": "Xeyes in Elm",
     "repository": "https://github.com/jnb/elm-eyes.git",
     "license": "BSD3",
     "source-directories": [
