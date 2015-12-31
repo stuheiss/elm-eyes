@@ -1,10 +1,10 @@
-import Face exposing (init, inputs, update, view)
+import Face exposing (init, input, update, view)
 import StartApp exposing (start)
 
 app =
   StartApp.start
     { init = init ()
-    , inputs = inputs
+    , inputs = [input]
     , update = update
     , view = view
     }

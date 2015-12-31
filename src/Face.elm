@@ -7,6 +7,7 @@ import Html
 import Html.Lazy
 import Mouse
 import Time
+import Touch
 
 
 -- MODEL
@@ -83,6 +84,10 @@ delta =
   Signal.map Time.inSeconds (Time.fps 30)
 
 
-inputs : List (Signal.Signal Action)
-inputs =
-  [ Signal.sampleOn delta Mouse.position ]
+input : Signal.Signal Action
+input =
+  Signal.sampleOn delta <|
+    Signal.mergeMany
+      [ Mouse.position
+      , Signal.map (\t -> (t.x, t.y)) Touch.taps
+      ]
