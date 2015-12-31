@@ -26,7 +26,7 @@ type alias Model =
   }
 
 
-type alias Action = (Int, Int)
+type alias Action = Maybe (Int, Int)
 
 
 noFx : Model -> (Model, Effects.Effects Action)
@@ -47,7 +47,8 @@ init () =
 update : Action -> Model -> (Model, Effects.Effects Action)
 update action model =
   case action of
-    (x, y) -> noFx
+    Nothing -> noFx model
+    Just (x, y) -> noFx
       { leftEye = Eye.update
           { mouseX = (toFloat x) - halfWidth - leftEyeX
           , mouseY = halfHeight - (toFloat y) - leftEyeY
@@ -88,6 +89,8 @@ input : Signal.Signal Action
 input =
   Signal.sampleOn delta <|
     Signal.mergeMany
-      [ Mouse.position
-      , Signal.map (\t -> (t.x, t.y)) Touch.taps
+      [ Signal.map Just Mouse.position
+      , Signal.map
+          (List.foldr (\t -> \_ -> Just (t.x, t.y)) Nothing)
+          Touch.touches
       ]
