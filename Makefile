@@ -6,7 +6,7 @@ TARGET = build/index.html
 all: $(TARGET)
 
 $(TARGET): $(SOURCES)
-	elm make --yes --output build/index.html src/Main.elm
+	elm make --yes --output build/index.html src/Face.elm
 
 .PHONY: clean
 clean:

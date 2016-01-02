@@ -1,21 +1,16 @@
 module Face where
 
-import Effects
 import Eye
 import Graphics.Collage
 import Html
 import Html.Lazy
 import Mouse
-import Time
+import Signal.Extra
 import Touch
 import Window
 
 
 -- MODEL
-
-(width, height) = (300, 350)
-(halfWidth, halfHeight) = (150, 175)
-
 
 (leftEyeX, leftEyeY) = (-75, 50)
 (rightEyeX, rightEyeY) = (75, 0)
@@ -40,30 +35,28 @@ type Action =
   | Click (Int, Int)
 
 
-noFx : Model -> (Model, Effects.Effects Action)
-noFx model =
-   (model, Effects.none)
-
-
-init : (Model, Effects.Effects Action)
-init =
-  noFx
-    { leftEye = Eye.init 0.0 0.0
-    , rightEye = Eye.init 0.0 0.0
-    , width = 0
-    , height = 0
-    , visibility = Hidden
-    }
+init : Action -> Model
+init action =
+  let
+    model =
+      { leftEye = Eye.init 0.0 0.0
+      , rightEye = Eye.init 0.0 0.0
+      , width = 0
+      , height = 0
+      , visibility = Hidden
+      }
+  in update action model
 
 
 -- UPDATE
 
-update : Action -> Model -> (Model, Effects.Effects Action)
+update : Action -> Model -> Model
 update action model =
   case action of
-    NoOp -> noFx model
-    Dimensions (x, y) -> noFx { model | width = x, height = y, visibility = Visible }
-    Click (x, y) -> noFx
+    NoOp -> model
+    Dimensions (x, y) ->
+      { model | width = x, height = y, visibility = Visible }
+    Click (x, y) ->
       { model |
         leftEye = Eye.update
           { mouseX = (toFloat x) - (toFloat model.width / 2) - leftEyeX
@@ -80,6 +73,11 @@ update action model =
 
 -- VIEW
 
+view : Model -> Html.Html
+view model =
+  Html.Lazy.lazy viewFace model
+
+
 viewFace : Model -> Html.Html
 viewFace model =
   case model.visibility of
@@ -92,25 +90,22 @@ viewFace model =
        ]
 
 
-view : Signal.Address Action -> Model -> Html.Html
-view _ model =
-  Html.Lazy.lazy viewFace model
+-- SIGNALS
 
+main : Signal Html.Html
+main =
+  Signal.map view model
 
--- INPUTS
-
-delta : Signal.Signal Time.Time
-delta =
-  Signal.map Time.inSeconds (Time.fps 30)
-
+model : Signal Model
+model =
+  Signal.Extra.foldp' update init input
 
 input : Signal.Signal Action
 input =
-  Signal.sampleOn delta <|
-    Signal.mergeMany
-      [ Signal.map Dimensions Window.dimensions
-      , Signal.map Click Mouse.position
-      , Signal.map
-          (List.foldr (\t -> \_ -> Click (t.x, t.y)) NoOp)
-          Touch.touches
-      ]
+  Signal.mergeMany
+    [ Signal.map Dimensions Window.dimensions
+    , Signal.map Click Mouse.position
+    , Signal.map
+        (List.foldr (\t -> \_ -> Click (t.x, t.y)) NoOp)
+        Touch.touches
+    ]
