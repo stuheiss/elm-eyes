@@ -1,8 +1,7 @@
-module Eye where
+module Eye exposing (init, Model, view, update)
 
 import Color
-import Graphics.Element
-import Graphics.Collage
+import Collage
 
 
 -- CONSTANTS
@@ -60,13 +59,13 @@ constrainCircleToElipse x_0 y_0 a b =
 
 -- VIEW
 
-view : Model -> Graphics.Collage.Form
+view : Model -> Collage.Form
 view model =
-  Graphics.Collage.group
-    [ Graphics.Collage.outlined
-        (Graphics.Collage.solid Color.black)
-        (Graphics.Collage.oval eyeWidth eyeHeight)
-    , Graphics.Collage.move
+  Collage.group
+    [ Collage.outlined
+        (Collage.solid Color.black)
+        (Collage.oval eyeWidth eyeHeight)
+    , Collage.move
         (model.pupilX, model.pupilY)
-        <| Graphics.Collage.filled Color.black (Graphics.Collage.circle pupilRadius)
+        <| Collage.filled Color.black (Collage.circle pupilRadius)
     ]

@@ -1,17 +1,17 @@
-module Face where
-
 import Eye
-import Graphics.Collage
-import Html
+import Collage
+import Html exposing (..)
+import Html.App as Html
 import Html.Lazy
 import Mouse
-import Signal.Extra
-import Touch
 import Window
+import Element exposing (Element)
+import Task
 
 
 -- MODEL
 
+-- initial eye positions
 (leftEyeX, leftEyeY) = (-75, 50)
 (rightEyeX, rightEyeY) = (75, 0)
 
@@ -22,90 +22,100 @@ type alias Model =
   , width : Int
   , height : Int
   , visibility: Visibility
+  , leftEyeXY : {x:Float, y:Float}
+  , rightEyeXY : {x:Float, y:Float}
   }
 
 
--- Only display the model after an initial `Dimensions' action
+-- Only display the model after an initial `Resize' action
 type Visibility = Hidden | Visible
-
-
-type Action =
-    NoOp
-  | Dimensions (Int, Int)
-  | Click (Int, Int)
-
-
-init : Action -> Model
-init action =
-  let
-    model =
-      { leftEye = Eye.init 0.0 0.0
-      , rightEye = Eye.init 0.0 0.0
-      , width = 0
-      , height = 0
-      , visibility = Hidden
-      }
-  in update action model
-
-
--- UPDATE
-
-update : Action -> Model -> Model
-update action model =
-  case action of
-    NoOp -> model
-    Dimensions (x, y) ->
-      { model | width = x, height = y, visibility = Visible }
-    Click (x, y) ->
-      { model |
-        leftEye = Eye.update
-          { mouseX = (toFloat x) - (toFloat model.width / 2) - leftEyeX
-          , mouseY = (toFloat model.height / 2) - (toFloat y) - leftEyeY
-          }
-          model.leftEye,
-        rightEye = Eye.update
-          { mouseX = (toFloat x) - (toFloat model.width / 2) - rightEyeX
-          , mouseY = (toFloat model.height / 2) - (toFloat y) - rightEyeY
-          }
-          model.rightEye
-      }
 
 
 -- VIEW
 
-view : Model -> Html.Html
+
+view : Model -> Html Msg
 view model =
   Html.Lazy.lazy viewFace model
 
-
-viewFace : Model -> Html.Html
+viewFace : Model -> Html Msg
 viewFace model =
   case model.visibility of
-    Hidden -> Html.div [] []
+    Hidden -> Html.div [] [text "hidden"]
     Visible ->
-      Html.fromElement
-        <| Graphics.Collage.collage model.width model.height
-       [ Graphics.Collage.move (leftEyeX, leftEyeY) <| Eye.view model.leftEye
-       , Graphics.Collage.move (rightEyeX, rightEyeY) <| Eye.view model.rightEye
-       ]
+      div [] [
+        Element.toHtml
+          <| Collage.collage model.width model.height
+        [ Collage.move (model.leftEyeXY.x, model.leftEyeXY.y) <| Eye.view model.leftEye
+        , Collage.move (model.rightEyeXY.x, model.rightEyeXY.y) <| Eye.view model.rightEye
+        ]
+      ]
 
 
--- SIGNALS
+-- MAIN
 
-main : Signal Html.Html
+
 main =
-  Signal.map view model
+  Html.program
+    { init = init
+    , update = update
+    , view = view
+    , subscriptions = subscriptions
+    }
 
-model : Signal Model
+init : (Model, Cmd Msg)
+init = (model, Task.perform (\_ -> NoOp) (\x -> Resize x) Window.size)
+
 model =
-  Signal.Extra.foldp' update init input
+  { leftEye = Eye.init 0.0 0.0
+  , rightEye = Eye.init 0.0 0.0
+  , width = 0
+  , height = 0
+  , visibility = Hidden
+  , leftEyeXY = {x=leftEyeX, y=leftEyeY}
+  , rightEyeXY = {x=rightEyeX, y=rightEyeY}
+  }
 
-input : Signal.Signal Action
-input =
-  Signal.mergeMany
-    [ Signal.map Dimensions Window.dimensions
-    , Signal.map Click Mouse.position
-    , Signal.map
-        (List.foldr (\t -> \_ -> Click (t.x, t.y)) NoOp)
-        Touch.touches
-    ]
+
+-- UPDATE
+
+
+type Msg =  
+    NoOp
+  | Move Mouse.Position
+  | Resize Window.Size
+
+movePupils : Model -> Mouse.Position -> Model
+movePupils model position =
+      { model |
+        leftEye = Eye.update
+          { mouseX = (toFloat position.x) - (toFloat model.width / 2) - model.leftEyeXY.x
+          , mouseY = (toFloat model.height / 2) - (toFloat position.y) - model.leftEyeXY.y
+          }
+          model.leftEye
+        , rightEye = Eye.update
+          { mouseX = (toFloat position.x) - (toFloat model.width / 2) - model.rightEyeXY.x
+          , mouseY = (toFloat model.height / 2) - (toFloat position.y) - model.rightEyeXY.y
+          }
+          model.rightEye
+      }
+
+update : Msg -> Model -> (Model, Cmd Msg)  
+update msg model =  
+  case msg of
+    NoOp -> (model, Cmd.none)
+    Resize newSize ->
+        ({ model | width = newSize.width, height = newSize.height, visibility = Visible }, Cmd.none)
+    Move position ->
+        (movePupils model position, Cmd.none)
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg  
+subscriptions model =
+    Sub.batch
+        [ Mouse.moves Move
+        ]
+
